@@ -1,3 +1,4 @@
+import os
 import adalflow as adal
 
 from api.config import configs, get_embedder_type
@@ -40,9 +41,21 @@ def get_embedder(is_local_ollama: bool = False, use_google_embedder: bool = Fals
         else:
             embedder_config = configs["embedder"]
 
-    # --- Initialize Embedder ---
+    # --- Initialize Model Client ---
     model_client_class = embedder_config["model_client"]
-    if "initialize_kwargs" in embedder_config:
+
+    # For Ollama embedder: explicitly pass OLLAMA_HOST so it always targets the
+    # local machine (for embedding + vision), independent of OLLAMA_GENERATOR_HOST.
+    is_ollama_client = (
+        model_client_class.__name__ == "OllamaClient"
+        if hasattr(model_client_class, "__name__")
+        else False
+    )
+
+    if is_ollama_client:
+        ollama_host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+        model_client = model_client_class(host=ollama_host)
+    elif "initialize_kwargs" in embedder_config:
         model_client = model_client_class(**embedder_config["initialize_kwargs"])
     else:
         model_client = model_client_class()
@@ -56,3 +69,4 @@ def get_embedder(is_local_ollama: bool = False, use_google_embedder: bool = Fals
     if "batch_size" in embedder_config:
         embedder.batch_size = embedder_config["batch_size"]
     return embedder
+

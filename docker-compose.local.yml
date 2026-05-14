@@ -1,0 +1,69 @@
+# ============================================================
+# docker-compose.local.yml — Offline Local Document Wiki Setup
+#
+# Usage:
+#   1. Copy .env.local.example to .env and fill in values
+#   2. Set LOCAL_DOCS_PATH to your documentation folder
+#   3. docker-compose -f docker-compose.local.yml up
+# ============================================================
+
+services:
+  deepwiki-local:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${PORT:-8001}:${PORT:-8001}"  # API port (FastAPI)
+      - "3000:3000"                     # Next.js frontend port
+    env_file:
+      - .env
+    environment:
+      - PORT=${PORT:-8001}
+      - NODE_ENV=production
+      - SERVER_BASE_URL=http://localhost:${PORT:-8001}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FILE_PATH=${LOG_FILE_PATH:-api/logs/application.log}
+
+      # ---- Offline Ollama configuration ----
+      # Embedding + Vision LLM: runs on local machine (RTX 3060)
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
+      # Text generation LLM: runs on AGX Orin (change IP to your network address)
+      - OLLAMA_GENERATOR_HOST=${OLLAMA_GENERATOR_HOST:-http://host.docker.internal:11434}
+      # Vision model for PPTX/PDF image extraction
+      - VISION_LLM_MODEL=${VISION_LLM_MODEL:-qwen2.5vl:7b}
+
+      # ---- Embedder: use Ollama (nomic-embed-text) ----
+      - DEEPWIKI_EMBEDDER_TYPE=ollama
+
+      # ---- Disable authentication for local use ----
+      - DEEPWIKI_AUTH_MODE=False
+
+      # ---- No cloud API keys needed for 100% local use ----
+      # - OPENAI_API_KEY=       # Leave unset
+      # - GOOGLE_API_KEY=       # Leave unset
+
+    volumes:
+      # Persist embedding database and cached wikis between container restarts
+      - ~/.adalflow:/root/.adalflow
+      # Persist application logs
+      - ./api/logs:/app/api/logs
+      # Mount local documentation folder (read-only for safety)
+      # Set LOCAL_DOCS_PATH in your .env or shell before running
+      - ${LOCAL_DOCS_PATH:-/tmp/docs}:/docs:ro
+
+    extra_hosts:
+      # Allow container to reach Ollama running on the host machine
+      - "host.docker.internal:host-gateway"
+
+    # Resource limits — adjust based on available RAM
+    mem_limit: 8g
+    mem_reservation: 2g
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${PORT:-8001}/health"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+    restart: unless-stopped

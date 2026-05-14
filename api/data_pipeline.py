@@ -190,6 +190,8 @@ def read_all_documents(path: str, embedder_type: str = None, is_ollama_embedder:
     code_extensions = [".py", ".js", ".ts", ".java", ".cpp", ".c", ".h", ".hpp", ".go", ".rs",
                        ".jsx", ".tsx", ".html", ".css", ".php", ".swift", ".cs"]
     doc_extensions = [".md", ".txt", ".rst", ".json", ".yaml", ".yml"]
+    # Rich document extensions processed via document_extractors (PPTX, PDF)
+    rich_doc_extensions = [".pptx", ".ppt", ".pdf"]
 
     # Determine filtering mode: inclusion or exclusion
     use_inclusion_mode = (included_dirs is not None and len(included_dirs) > 0) or (included_files is not None and len(included_files) > 0)
@@ -383,6 +385,34 @@ def read_all_documents(path: str, embedder_type: str = None, is_ollama_embedder:
                     documents.append(doc)
             except Exception as e:
                 logger.error(f"Error reading {file_path}: {e}")
+
+    # Process rich documents (PPTX, PDF) — requires Vision LLM for image-heavy files
+    for ext in rich_doc_extensions:
+        files = glob.glob(f"{path}/**/*{ext}", recursive=True)
+        for file_path in files:
+            if not should_process_file(file_path, use_inclusion_mode, included_dirs, included_files, excluded_dirs, excluded_files):
+                continue
+
+            try:
+                from api.document_extractors import extract_documents_from_file
+                extracted = extract_documents_from_file(file_path)
+                for doc in extracted:
+                    # Update relative path in metadata
+                    relative_path = os.path.relpath(file_path, path)
+                    doc.meta_data["file_path"] = relative_path
+                    # Token count estimate: use word count since content is pre-extracted markdown
+                    token_count = count_tokens(doc.text, embedder_type)
+                    if token_count > MAX_EMBEDDING_TOKENS:
+                        logger.warning(
+                            f"Skipping large chunk from {relative_path}: "
+                            f"Token count ({token_count}) exceeds limit"
+                        )
+                        continue
+                    doc.meta_data["token_count"] = token_count
+                    documents.append(doc)
+                logger.info(f"Extracted {len(extracted)} chunks from rich document: {file_path}")
+            except Exception as e:
+                logger.error(f"Error extracting rich document {file_path}: {e}")
 
     logger.info(f"Found {len(documents)} documents")
     return documents

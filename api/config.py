@@ -51,6 +51,12 @@ WIKI_AUTH_CODE = os.environ.get('DEEPWIKI_AUTH_CODE', '')
 # Embedder settings
 EMBEDDER_TYPE = os.environ.get('DEEPWIKI_EMBEDDER_TYPE', 'openai').lower()
 
+# Ollama endpoint configuration
+# OLLAMA_HOST: used for embedding model (nomic-embed-text) and vision LLM — runs on local machine
+# OLLAMA_GENERATOR_HOST: used for text generation LLM (qwen2.5:27b) — can run on remote machine
+OLLAMA_HOST = os.environ.get('OLLAMA_HOST', 'http://localhost:11434')
+OLLAMA_GENERATOR_HOST = os.environ.get('OLLAMA_GENERATOR_HOST', OLLAMA_HOST)
+
 # Get configuration directory from environment variable, or use default if not set
 CONFIG_DIR = os.environ.get('DEEPWIKI_CONFIG_DIR', None)
 
@@ -400,13 +406,25 @@ def get_model_config(provider="google", model=None):
 
     # Provider-specific adjustments
     if provider == "ollama":
-        # Ollama uses a slightly different parameter structure
+        # Ollama uses a slightly different parameter structure.
+        # Inject OLLAMA_GENERATOR_HOST so the generator talks to the AGX Orin (or whichever
+        # host is configured for text generation) rather than localhost.
+        generator_host = OLLAMA_GENERATOR_HOST
         if "options" in model_params:
-            result["model_kwargs"] = {"model": model, **model_params["options"]}
+            result["model_kwargs"] = {
+                "model": model,
+                **model_params["options"],
+                "host": generator_host,
+            }
         else:
-            result["model_kwargs"] = {"model": model}
+            result["model_kwargs"] = {"model": model, "host": generator_host}
     else:
         # Standard structure for other providers
         result["model_kwargs"] = {"model": model, **model_params}
 
     return result
+
+
+def get_ollama_generator_host() -> str:
+    """Return the Ollama host to use for text generation (may differ from embedding host)."""
+    return OLLAMA_GENERATOR_HOST

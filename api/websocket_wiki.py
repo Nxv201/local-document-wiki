@@ -16,6 +16,7 @@ from api.config import (
     OPENAI_API_KEY,
     AWS_ACCESS_KEY_ID,
     AWS_SECRET_ACCESS_KEY,
+    OLLAMA_GENERATOR_HOST,
 )
 from api.data_pipeline import count_tokens, get_file_content
 from api.bedrock_client import BedrockClient
@@ -254,7 +255,18 @@ async def handle_websocket_chat(websocket: WebSocket):
         supported_langs = configs["lang_config"]["supported_languages"]
         language_name = supported_langs.get(language_code, "English")
 
-        # Create system prompt
+        # Create system prompt — context-aware: local docs vs remote repo
+        is_local_docs = repo_type == "local"
+        if is_local_docs:
+            # Documentation collection context (training slides, PDFs, source code)
+            context_desc = f"local documentation collection: '{repo_name}'"
+            source_type_desc = "training slides, PDF documents, and source code files"
+            cite_instruction = "Cite specific documents, slide numbers, or page numbers when relevant"
+        else:
+            context_desc = f"{repo_type} repository: {repo_url} ({repo_name})"
+            source_type_desc = "code files, documentation, and configuration"
+            cite_instruction = "Cite specific files and code sections when relevant"
+
         if is_deep_research:
             # Check if this is the first iteration
             is_first_iteration = research_iteration == 1
@@ -264,7 +276,8 @@ async def handle_websocket_chat(websocket: WebSocket):
 
             if is_first_iteration:
                 system_prompt = f"""<role>
-You are an expert code analyst examining the {repo_type} repository: {repo_url} ({repo_name}).
+You are an expert technical analyst examining the {context_desc}.
+The collection contains {source_type_desc}.
 You are conducting a multi-turn Deep Research process to thoroughly investigate the specific topic in the user's query.
 Your goal is to provide detailed, focused information EXCLUSIVELY about this topic.
 IMPORTANT:You MUST respond in {language_name} language.
@@ -274,13 +287,11 @@ IMPORTANT:You MUST respond in {language_name} language.
 - This is the first iteration of a multi-turn research process focused EXCLUSIVELY on the user's query
 - Start your response with "## Research Plan"
 - Outline your approach to investigating this specific topic
-- If the topic is about a specific file or feature (like "Dockerfile"), focus ONLY on that file or feature
 - Clearly state the specific topic you're researching to maintain focus throughout all iterations
 - Identify the key aspects you'll need to research
 - Provide initial findings based on the information available
 - End with "## Next Steps" indicating what you'll investigate in the next iteration
 - Do NOT provide a final conclusion yet - this is just the beginning of the research
-- Do NOT include general repository information unless directly relevant to the query
 - Focus EXCLUSIVELY on the specific topic being researched - do not drift to related topics
 - Your research MUST directly address the original question
 - NEVER respond with just "Continue the research" as an answer - always provide substantive research findings
@@ -290,11 +301,12 @@ IMPORTANT:You MUST respond in {language_name} language.
 <style>
 - Be concise but thorough
 - Use markdown formatting to improve readability
-- Cite specific files and code sections when relevant
+- {cite_instruction}
 </style>"""
             elif is_final_iteration:
                 system_prompt = f"""<role>
-You are an expert code analyst examining the {repo_type} repository: {repo_url} ({repo_name}).
+You are an expert technical analyst examining the {context_desc}.
+The collection contains {source_type_desc}.
 You are in the final iteration of a Deep Research process focused EXCLUSIVELY on the latest user query.
 Your goal is to synthesize all previous findings and provide a comprehensive conclusion that directly addresses this specific topic and ONLY this topic.
 IMPORTANT:You MUST respond in {language_name} language.
@@ -307,26 +319,24 @@ IMPORTANT:You MUST respond in {language_name} language.
 - Start with "## Final Conclusion"
 - Your conclusion MUST directly address the original question
 - Stay STRICTLY focused on the specific topic - do not drift to related topics
-- Include specific code references and implementation details related to the topic
-- Highlight the most important discoveries and insights about this specific functionality
+- Highlight the most important discoveries and insights about this specific topic
 - Provide a complete and definitive answer to the original question
-- Do NOT include general repository information unless directly relevant to the query
 - Focus exclusively on the specific topic being researched
 - NEVER respond with "Continue the research" as an answer - always provide a complete conclusion
-- If the topic is about a specific file or feature (like "Dockerfile"), focus ONLY on that file or feature
 - Ensure your conclusion builds on and references key findings from previous iterations
 </guidelines>
 
 <style>
 - Be concise but thorough
 - Use markdown formatting to improve readability
-- Cite specific files and code sections when relevant
+- {cite_instruction}
 - Structure your response with clear headings
 - End with actionable insights or recommendations when appropriate
 </style>"""
             else:
                 system_prompt = f"""<role>
-You are an expert code analyst examining the {repo_type} repository: {repo_url} ({repo_name}).
+You are an expert technical analyst examining the {context_desc}.
+The collection contains {source_type_desc}.
 You are currently in iteration {research_iteration} of a Deep Research process focused EXCLUSIVELY on the latest user query.
 Your goal is to build upon previous research iterations and go deeper into this specific topic without deviating from it.
 IMPORTANT:You MUST respond in {language_name} language.
@@ -341,9 +351,7 @@ IMPORTANT:You MUST respond in {language_name} language.
 - Clearly explain what you're investigating in this iteration
 - Provide new insights that weren't covered in previous iterations
 - If this is iteration 3, prepare for a final conclusion in the next iteration
-- Do NOT include general repository information unless directly relevant to the query
 - Focus EXCLUSIVELY on the specific topic being researched - do not drift to related topics
-- If the topic is about a specific file or feature (like "Dockerfile"), focus ONLY on that file or feature
 - NEVER respond with just "Continue the research" as an answer - always provide substantive research findings
 - Your research MUST directly address the original question
 - Maintain continuity with previous research iterations - this is a continuous investigation
@@ -353,11 +361,42 @@ IMPORTANT:You MUST respond in {language_name} language.
 - Be concise but thorough
 - Focus on providing new information, not repeating what's already been covered
 - Use markdown formatting to improve readability
-- Cite specific files and code sections when relevant
+- {cite_instruction}
 </style>"""
         else:
-            system_prompt = f"""<role>
-You are an expert code analyst examining the {repo_type} repository: {repo_url} ({repo_name}).
+            if is_local_docs:
+                system_prompt = f"""<role>
+You are an expert technical writer and knowledge base assistant for the {context_desc}.
+This collection contains {source_type_desc} extracted and indexed for you.
+You provide direct, concise, and accurate answers based exclusively on the indexed content.
+IMPORTANT:You MUST respond in {language_name} language.
+</role>
+
+<guidelines>
+- Answer the user's question directly without ANY preamble or filler phrases
+- Base answers ONLY on the content from the indexed documents
+- DO NOT speculate or add information not present in the documents
+- DO NOT start with preambles like "Okay, here's a breakdown" or "Here's an explanation"
+- DO NOT start with markdown headers like "## Analysis of..."
+- DO NOT start with ```markdown code fences
+- DO NOT end your response with ``` closing fences
+- DO NOT start by repeating or acknowledging the question
+- JUST START with the direct answer to the question
+- When referencing content from slides, mention the source file and slide/page number
+- Format your response with proper markdown including headings, lists, and code blocks WITHIN your answer
+- Think step by step and structure your answer logically
+- Start with the most relevant information that directly addresses the user's query
+</guidelines>
+
+<style>
+- Use concise, direct language
+- Prioritize accuracy over verbosity
+- {cite_instruction}
+- Use markdown formatting to improve readability
+</style>"""
+            else:
+                system_prompt = f"""<role>
+You are an expert code analyst examining the {context_desc}.
 You provide direct, concise, and accurate information about code repositories.
 You NEVER start responses with markdown headers or code fences.
 IMPORTANT:You MUST respond in {language_name} language.
@@ -397,6 +436,7 @@ This file contains...
 - When showing code, include line numbers and file paths when relevant
 - Use markdown formatting to improve readability
 </style>"""
+
 
         # Fetch file content if provided
         file_content = ""
@@ -442,14 +482,16 @@ This file contains...
         if request.provider == "ollama":
             prompt += " /no_think"
 
-            model = OllamaClient()
+            # Use OLLAMA_GENERATOR_HOST so LLM text generation targets the AGX Orin
+            # (or whatever host is configured), while the embedder stays on localhost.
+            model = OllamaClient(host=OLLAMA_GENERATOR_HOST)
             model_kwargs = {
                 "model": model_config["model"],
                 "stream": True,
                 "options": {
-                    "temperature": model_config["temperature"],
-                    "top_p": model_config["top_p"],
-                    "num_ctx": model_config["num_ctx"]
+                    "temperature": model_config.get("temperature", 0.7),
+                    "top_p": model_config.get("top_p", 0.8),
+                    "num_ctx": model_config.get("num_ctx", 32768),
                 }
             }
 
