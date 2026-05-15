@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { FaWikipediaW, FaGithub, FaCoffee, FaTwitter } from 'react-icons/fa';
+import { FaWikipediaW, FaGithub, FaCoffee, FaTwitter, FaFolderOpen } from 'react-icons/fa';
 import ThemeToggle from '@/components/theme-toggle';
 import Mermaid from '../components/Mermaid';
 import ConfigurationModal from '@/components/ConfigurationModal';
@@ -76,6 +76,8 @@ export default function Home() {
   };
 
   const [repositoryInput, setRepositoryInput] = useState('');
+  const [isUploadingFolder, setIsUploadingFolder] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const REPO_CONFIG_CACHE_KEY = 'deepwikiRepoConfigCache';
 
@@ -264,6 +266,49 @@ export default function Home() {
     setIsConfigModalOpen(true);
   };
 
+  const handleFolderUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploadingFolder(true);
+    setError(null);
+    
+    try {
+      const formData = new FormData();
+      for (let i = 0; i < files.length; i++) {
+        // webkitRelativePath contains the path structure
+        // We append the file itself, and the backend handles the path
+        formData.append('files', files[i], files[i].webkitRelativePath || files[i].name);
+      }
+      
+      const response = await fetch('/api/upload_folder', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      if (data.local_path) {
+        setRepositoryInput(data.local_path);
+        // We don't auto-submit so the user can configure settings
+      } else {
+        throw new Error("Invalid response from server");
+      }
+    } catch (err) {
+      console.error("Folder upload error:", err);
+      setError(err instanceof Error ? err.message : "Failed to upload folder");
+    } finally {
+      setIsUploadingFolder(false);
+      // Reset input so the same folder can be uploaded again if needed
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   const validateAuthCode = async () => {
     try {
       if(authRequired) {
@@ -431,9 +476,26 @@ export default function Home() {
                 )}
               </div>
               <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="btn-secondary px-4 py-2.5 rounded-lg flex items-center justify-center border border-[var(--border-color)] hover:bg-[var(--background)]/80 transition-colors whitespace-nowrap disabled:opacity-50"
+                disabled={isUploadingFolder || isSubmitting}
+                title="Upload local folder"
+              >
+                <FaFolderOpen className="mr-2" />
+                {isUploadingFolder ? '...' : 'Upload'}
+              </button>
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFolderUpload} 
+                className="hidden" 
+                {...{ webkitdirectory: "", directory: "", multiple: true } as React.InputHTMLAttributes<HTMLInputElement>}
+              />
+              <button
                 type="submit"
                 className="btn-japanese px-6 py-2.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={isSubmitting}
+                disabled={isSubmitting || isUploadingFolder}
               >
                 {isSubmitting ? t('common.processing') : t('common.generateWiki')}
               </button>

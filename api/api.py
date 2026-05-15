@@ -1,6 +1,8 @@
 import os
 import logging
-from fastapi import FastAPI, HTTPException, Query, Request, WebSocket
+import shutil
+import uuid
+from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from typing import List, Optional, Dict, Any, Literal
@@ -632,3 +634,43 @@ async def get_processed_projects():
     except Exception as e:
         logger.error(f"Error listing processed projects from {WIKI_CACHE_DIR}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to list processed projects from server cache.")
+
+@app.post("/upload_folder")
+async def upload_folder(files: List[UploadFile] = File(...)):
+    """
+    Accepts multiple uploaded files (from a folder selection) and saves them
+    into a unique temporary directory, maintaining their relative structure.
+    Returns the absolute path to this directory.
+    """
+    if not files:
+        raise HTTPException(status_code=400, detail="No files uploaded.")
+
+    # Create a unique directory for this upload
+    upload_id = str(uuid.uuid4())
+    upload_dir = os.path.abspath(os.path.join("uploads", upload_id))
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    try:
+        saved_files = 0
+        for file in files:
+            # Depending on the client, filename might include relative path structure
+            # when uploaded via webkitdirectory.
+            # E.g., "myfolder/src/main.py"
+            filename = file.filename
+            if not filename:
+                continue
+                
+            # Create subdirectories if necessary
+            file_path = os.path.join(upload_dir, filename)
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            
+            # Save the file
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+            saved_files += 1
+            
+        logger.info(f"Successfully saved {saved_files} files to {upload_dir}")
+        return {"local_path": upload_dir, "file_count": saved_files}
+    except Exception as e:
+        logger.error(f"Error saving uploaded folder: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to save uploaded folder: {str(e)}")
