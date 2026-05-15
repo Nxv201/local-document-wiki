@@ -45,7 +45,7 @@ def extract_image_content(
     model: Optional[str] = None,
     prompt: Optional[str] = None,
     host: Optional[str] = None,
-    timeout: int = 60,
+    timeout: int = 300,
 ) -> str:
     """
     Call the Ollama Vision API to extract text and structure from an image.
@@ -55,7 +55,7 @@ def extract_image_content(
         model: Ollama vision model name. Defaults to VISION_LLM_MODEL env var or 'qwen2.5vl:7b'
         prompt: Custom extraction prompt. Defaults to the G1 full content dump prompt.
         host: Ollama host URL. Defaults to OLLAMA_HOST env var or 'http://localhost:11434'
-        timeout: Request timeout in seconds (default 60 — vision calls can be slow)
+        timeout: Request timeout in seconds (default 300 — vision calls can be slow)
 
     Returns:
         str: Extracted content as markdown text. Empty string on failure.
