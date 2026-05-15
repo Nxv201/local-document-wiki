@@ -31,6 +31,14 @@ interface ModelSelectorProps {
   customModel: string;
   setCustomModel: (value: string) => void;
 
+  // Model parameters
+  temperature?: number;
+  setTemperature?: (value: number) => void;
+  topP?: number;
+  setTopP?: (value: number) => void;
+  numCtx?: number;
+  setNumCtx?: (value: number) => void;
+
   // File filter configuration
   showFileFilters?: boolean;
   excludedDirs?: string;
@@ -52,6 +60,14 @@ export default function UserSelector({
   setIsCustomModel,
   customModel,
   setCustomModel,
+
+  // Model parameters
+  temperature = 0.7,
+  setTemperature,
+  topP = 0.8,
+  setTopP,
+  numCtx = 8000,
+  setNumCtx,
 
   // File filter configuration
   showFileFilters = false,
@@ -372,6 +388,57 @@ next.config.js
             </div>
           </div>
         )}
+
+        {/* Advanced Model Parameters */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2 p-3 border border-[var(--border-color)]/70 rounded-md bg-[var(--background)]/30">
+          <div>
+            <div className="flex justify-between">
+              <label htmlFor="temp-slider" className="block text-xs font-medium text-[var(--foreground)] mb-1.5">
+                Temperature
+              </label>
+              <span className="text-xs text-[var(--muted)]">{temperature}</span>
+            </div>
+            <input 
+              id="temp-slider"
+              type="range" 
+              min="0" max="2" step="0.1" 
+              value={temperature} 
+              onChange={(e) => setTemperature?.(parseFloat(e.target.value))} 
+              className="w-full accent-[var(--accent-primary)] h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700" 
+            />
+          </div>
+          <div>
+            <div className="flex justify-between">
+              <label htmlFor="top-p-slider" className="block text-xs font-medium text-[var(--foreground)] mb-1.5">
+                Top P
+              </label>
+              <span className="text-xs text-[var(--muted)]">{topP}</span>
+            </div>
+            <input 
+              id="top-p-slider"
+              type="range" 
+              min="0" max="1" step="0.05" 
+              value={topP} 
+              onChange={(e) => setTopP?.(parseFloat(e.target.value))} 
+              className="w-full accent-[var(--accent-primary)] h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700" 
+            />
+          </div>
+          <div className="md:col-span-2">
+            <div className="flex justify-between">
+              <label htmlFor="num-ctx-input" className="block text-xs font-medium text-[var(--foreground)] mb-1.5">
+                Context Window (num_ctx)
+              </label>
+            </div>
+            <input 
+              id="num-ctx-input"
+              type="number" 
+              min="2048" max="128000" step="1024" 
+              value={numCtx} 
+              onChange={(e) => setNumCtx?.(parseInt(e.target.value) || 8000)} 
+              className="input-japanese block w-full px-2.5 py-1.5 text-sm rounded-md bg-transparent text-[var(--foreground)] focus:outline-none focus:border-[var(--accent-primary)]" 
+            />
+          </div>
+        </div>
 
         {showFileFilters && (
           <div className="mt-4">

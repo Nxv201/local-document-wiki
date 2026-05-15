@@ -60,6 +60,9 @@ class ChatCompletionRequest(BaseModel):
     excluded_files: Optional[str] = Field(None, description="Comma-separated list of file patterns to exclude from processing")
     included_dirs: Optional[str] = Field(None, description="Comma-separated list of directories to include exclusively")
     included_files: Optional[str] = Field(None, description="Comma-separated list of file patterns to include exclusively")
+    temperature: Optional[float] = Field(None, description="Generation temperature")
+    top_p: Optional[float] = Field(None, description="Generation top_p")
+    num_ctx: Optional[int] = Field(None, description="Context window size")
 
 async def handle_websocket_chat(websocket: WebSocket):
     """
@@ -489,9 +492,9 @@ This file contains...
                 "model": model_config["model"],
                 "stream": True,
                 "options": {
-                    "temperature": model_config.get("temperature", 0.7),
-                    "top_p": model_config.get("top_p", 0.8),
-                    "num_ctx": model_config.get("num_ctx", 32768),
+                    "temperature": request.temperature if request.temperature is not None else model_config.get("temperature", 0.7),
+                    "top_p": request.top_p if request.top_p is not None else model_config.get("top_p", 0.8),
+                    "num_ctx": request.num_ctx if request.num_ctx is not None else model_config.get("num_ctx", 32768),
                 }
             }
 

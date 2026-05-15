@@ -106,7 +106,10 @@ const addTokensToRequestBody = (
   excludedDirs?: string,
   excludedFiles?: string,
   includedDirs?: string,
-  includedFiles?: string
+  includedFiles?: string,
+  temperature?: number,
+  topP?: number,
+  numCtx?: number
 ): void => {
   if (token !== '') {
     requestBody.token = token;
@@ -133,6 +136,16 @@ const addTokensToRequestBody = (
   }
   if (includedFiles) {
     requestBody.included_files = includedFiles;
+  }
+  
+  if (temperature !== undefined) {
+    requestBody.temperature = temperature;
+  }
+  if (topP !== undefined) {
+    requestBody.top_p = topP;
+  }
+  if (numCtx !== undefined) {
+    requestBody.num_ctx = numCtx;
   }
 
 };
@@ -254,6 +267,15 @@ export default function RepoWikiPage() {
   const includedFiles = searchParams.get('included_files') || '';
   const [modelIncludedDirs, setModelIncludedDirs] = useState(includedDirs);
   const [modelIncludedFiles, setModelIncludedFiles] = useState(includedFiles);
+  
+  // Advanced Model Parameters
+  const temperatureParam = searchParams.get('temperature');
+  const topPParam = searchParams.get('top_p');
+  const numCtxParam = searchParams.get('num_ctx');
+  
+  const [temperature, setTemperature] = useState<number>(temperatureParam ? parseFloat(temperatureParam) : 0.7);
+  const [topP, setTopP] = useState<number>(topPParam ? parseFloat(topPParam) : 0.8);
+  const [numCtx, setNumCtx] = useState<number>(numCtxParam ? parseInt(numCtxParam) : 8000);
 
 
   // Wiki type state - default to comprehensive view
@@ -537,7 +559,7 @@ Remember:
         };
 
         // Add tokens if available
-        addTokensToRequestBody(requestBody, currentToken, effectiveRepoInfo.type, selectedProviderState, selectedModelState, isCustomSelectedModelState, customSelectedModelState, language, modelExcludedDirs, modelExcludedFiles, modelIncludedDirs, modelIncludedFiles);
+        addTokensToRequestBody(requestBody, currentToken, effectiveRepoInfo.type, selectedProviderState, selectedModelState, isCustomSelectedModelState, customSelectedModelState, language, modelExcludedDirs, modelExcludedFiles, modelIncludedDirs, modelIncludedFiles, temperature, topP, numCtx);
 
         // Use WebSocket for communication
         let content = '';
@@ -825,7 +847,7 @@ IMPORTANT:
       };
 
       // Add tokens if available
-      addTokensToRequestBody(requestBody, currentToken, effectiveRepoInfo.type, selectedProviderState, selectedModelState, isCustomSelectedModelState, customSelectedModelState, language, modelExcludedDirs, modelExcludedFiles, modelIncludedDirs, modelIncludedFiles);
+      addTokensToRequestBody(requestBody, currentToken, effectiveRepoInfo.type, selectedProviderState, selectedModelState, isCustomSelectedModelState, customSelectedModelState, language, modelExcludedDirs, modelExcludedFiles, modelIncludedDirs, modelIncludedFiles, temperature, topP, numCtx);
 
       // Use WebSocket for communication
       let responseText = '';

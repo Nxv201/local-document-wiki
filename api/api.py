@@ -11,6 +11,8 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 import google.generativeai as genai
 import asyncio
+import aiohttp
+from api.config import configs, WIKI_AUTH_MODE, WIKI_AUTH_CODE, OLLAMA_GENERATOR_HOST
 
 # Configure logging
 from api.logging_config import setup_logging
@@ -187,10 +189,23 @@ async def get_model_config():
         # Add provider configuration based on config.py
         for provider_id, provider_config in configs["providers"].items():
             models = []
-            # Add models from config
-            for model_id in provider_config["models"].keys():
-                # Get a more user-friendly display name if possible
-                models.append(Model(id=model_id, name=model_id))
+            
+            if provider_id == "ollama":
+                try:
+                    # Dynamically fetch models from Ollama AGX host
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(f"{OLLAMA_GENERATOR_HOST}/api/tags", timeout=3) as resp:
+                            if resp.status == 200:
+                                data = await resp.json()
+                                for m in data.get("models", []):
+                                    models.append(Model(id=m["name"], name=m["name"]))
+                except Exception as e:
+                    logger.error(f"Failed to fetch models dynamically from ollama: {e}")
+            
+            # If Ollama fetch failed or it's another provider, fallback to config
+            if not models:
+                for model_id in provider_config["models"].keys():
+                    models.append(Model(id=model_id, name=model_id))
 
             # Add provider with its models
             providers.append(

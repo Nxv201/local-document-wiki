@@ -128,6 +128,11 @@ export default function Home() {
   const [model, setModel] = useState<string>('');
   const [isCustomModel, setIsCustomModel] = useState<boolean>(false);
   const [customModel, setCustomModel] = useState<string>('');
+  
+  // Model parameters state
+  const [temperature, setTemperature] = useState<number>(0.7);
+  const [topP, setTopP] = useState<number>(0.8);
+  const [numCtx, setNumCtx] = useState<number>(8000);
 
   // Wiki type state - default to comprehensive view
   const [isComprehensiveView, setIsComprehensiveView] = useState<boolean>(true);
@@ -407,6 +412,12 @@ export default function Home() {
     if (isCustomModel && customModel) {
       params.append('custom_model', customModel);
     }
+    
+    // Add advanced model parameters
+    params.append('temperature', temperature.toString());
+    params.append('top_p', topP.toString());
+    params.append('num_ctx', numCtx.toString());
+
     // Add file filters configuration
     if (excludedDirs) {
       params.append('excluded_dirs', excludedDirs);
@@ -520,6 +531,12 @@ export default function Home() {
             setIsCustomModel={setIsCustomModel}
             customModel={customModel}
             setCustomModel={setCustomModel}
+            temperature={temperature}
+            setTemperature={setTemperature}
+            topP={topP}
+            setTopP={setTopP}
+            numCtx={numCtx}
+            setNumCtx={setNumCtx}
             selectedPlatform={selectedPlatform}
             setSelectedPlatform={setSelectedPlatform}
             accessToken={accessToken}

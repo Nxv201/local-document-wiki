@@ -30,6 +30,14 @@ interface ConfigurationModalProps {
   setIsCustomModel: (value: boolean) => void;
   customModel: string;
   setCustomModel: (value: string) => void;
+  
+  // Model parameters
+  temperature: number;
+  setTemperature: (value: number) => void;
+  topP: number;
+  setTopP: (value: number) => void;
+  numCtx: number;
+  setNumCtx: (value: number) => void;
 
   // Platform selection
   selectedPlatform: 'github' | 'gitlab' | 'bitbucket';
@@ -77,6 +85,12 @@ export default function ConfigurationModal({
   setIsCustomModel,
   customModel,
   setCustomModel,
+  temperature,
+  setTemperature,
+  topP,
+  setTopP,
+  numCtx,
+  setNumCtx,
   selectedPlatform,
   setSelectedPlatform,
   accessToken,
@@ -219,6 +233,12 @@ export default function ConfigurationModal({
                 setIsCustomModel={setIsCustomModel}
                 customModel={customModel}
                 setCustomModel={setCustomModel}
+                temperature={temperature}
+                setTemperature={setTemperature}
+                topP={topP}
+                setTopP={setTopP}
+                numCtx={numCtx}
+                setNumCtx={setNumCtx}
                 showFileFilters={true}
                 excludedDirs={excludedDirs}
                 setExcludedDirs={setExcludedDirs}
