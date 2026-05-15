@@ -747,6 +747,7 @@ Create a structured wiki with logical sections based PRIMARILY on the provided f
 Do NOT use a rigidly fixed set of sections (like "Overview", "System Architecture", etc.) unless they genuinely best fit this specific repository. Let the content dictate the structure.
 IMPORTANT: If the repository contains presentation materials (PPTX/PPT), PDFs, or similar document files (as seen in the file tree), you MUST create specific wiki pages or sections dedicated to summarizing and reflecting the information from those documents.
 
+${isComprehensiveView ? `
 Return your analysis in the following XML format:
 
 <wiki_structure>
