@@ -743,19 +743,9 @@ When designing the wiki structure, include pages that would benefit from visual 
 - State machines
 - Class hierarchies
 
-${isComprehensiveView ? `
-Create a structured wiki with the following main sections:
-- Overview (general information about the project)
-- System Architecture (how the system is designed)
-- Core Features (key functionality)
-- Data Management/Flow: If applicable, how data is stored, processed, accessed, and managed (e.g., database schema, data pipelines, state management).
-- Frontend Components (UI elements, if applicable.)
-- Backend Systems (server-side components)
-- Model Integration (AI model connections)
-- Deployment/Infrastructure (how to deploy, what's the infrastructure like)
-- Extensibility and Customization: If the project architecture supports it, explain how to extend or customize its functionality (e.g., plugins, theming, custom modules, hooks).
-
-Each section should contain relevant pages. For example, the "Frontend Components" section might include pages for "Home Page", "Repository Wiki Page", "Ask Component", etc.
+Create a structured wiki with logical sections based PRIMARILY on the provided file tree and README.
+Do NOT use a rigidly fixed set of sections (like "Overview", "System Architecture", etc.) unless they genuinely best fit this specific repository. Let the content dictate the structure.
+IMPORTANT: If the repository contains presentation materials (PPTX/PPT), PDFs, or similar document files (as seen in the file tree), you MUST create specific wiki pages or sections dedicated to summarizing and reflecting the information from those documents.
 
 Return your analysis in the following XML format:
 
