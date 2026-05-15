@@ -336,11 +336,10 @@ async def chat_completions_stream(request: ChatCompletionRequest):
             prompt += " /no_think"
 
             from api.config import get_ollama_generator_host
-            model = OllamaClient()
+            model = OllamaClient(host=get_ollama_generator_host())
             model_kwargs = {
                 "model": model_config["model"],
                 "stream": True,
-                "host": get_ollama_generator_host(),
                 "options": {
                     "temperature": request.temperature if request.temperature is not None else model_config.get("temperature", 0.7),
                     "top_p": request.top_p if request.top_p is not None else model_config.get("top_p", 0.8),
@@ -586,11 +585,9 @@ async def chat_completions_stream(request: ChatCompletionRequest):
                             simplified_prompt += " /no_think"
 
                             # Create new api_kwargs with the simplified prompt
-                            fallback_model_kwargs = dict(model_kwargs)
-                            fallback_model_kwargs["host"] = get_ollama_generator_host()
                             fallback_api_kwargs = model.convert_inputs_to_api_kwargs(
                                 input=simplified_prompt,
-                                model_kwargs=fallback_model_kwargs,
+                                model_kwargs=model_kwargs,
                                 model_type=ModelType.LLM
                             )
 

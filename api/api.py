@@ -198,7 +198,9 @@ async def get_model_config():
                             if resp.status == 200:
                                 data = await resp.json()
                                 for m in data.get("models", []):
-                                    models.append(Model(id=m["name"], name=m["name"]))
+                                    model_name = m["name"].lower()
+                                    if "embed" not in model_name and "nomic" not in model_name:
+                                        models.append(Model(id=m["name"], name=m["name"]))
                 except Exception as e:
                     logger.error(f"Failed to fetch models dynamically from ollama: {e}")
             

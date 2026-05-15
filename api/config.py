@@ -406,18 +406,13 @@ def get_model_config(provider="google", model=None):
 
     # Provider-specific adjustments
     if provider == "ollama":
-        # Ollama uses a slightly different parameter structure.
-        # Inject OLLAMA_GENERATOR_HOST so the generator talks to the AGX Orin (or whichever
-        # host is configured for text generation) rather than localhost.
-        generator_host = OLLAMA_GENERATOR_HOST
         if "options" in model_params:
             result["model_kwargs"] = {
                 "model": model,
-                **model_params["options"],
-                "host": generator_host,
+                **model_params["options"]
             }
         else:
-            result["model_kwargs"] = {"model": model, "host": generator_host}
+            result["model_kwargs"] = {"model": model}
     else:
         # Standard structure for other providers
         result["model_kwargs"] = {"model": model, **model_params}
